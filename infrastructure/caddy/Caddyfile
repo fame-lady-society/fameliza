@@ -1,0 +1,13 @@
+ai.fame.support {
+    reverse_proxy localhost:3000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+    
+    # Health check endpoint (bypass auth)
+    handle_path /health {
+        reverse_proxy localhost:3000
+    }
+}
+

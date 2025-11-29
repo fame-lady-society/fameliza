@@ -1,0 +1,103 @@
+name: Deploy to Linode
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.LINODE_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.LINODE_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Linode
+        env:
+          LINODE_HOST: ${{ secrets.LINODE_HOST }}
+          LINODE_USER: ${{ secrets.LINODE_USER || 'root' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no ${LINODE_USER}@${LINODE_HOST} << 'ENDSSH'
+            set -e
+            
+            APP_DIR="/opt/fameliza"
+            
+            # Setup: Use root to create directories and set permissions
+            if [ "$(whoami)" = "root" ]; then
+              echo "Setting up application directory as root..."
+              mkdir -p "$APP_DIR"
+              chown -R fameliza:fameliza "$APP_DIR"
+              chmod 755 "$APP_DIR"
+            fi
+            
+            # Switch to fameliza user for application operations
+            if [ "$(whoami)" = "root" ]; then
+              # Run deployment as fameliza user
+              sudo -u fameliza bash << 'FAMELIZA_SCRIPT'
+                set -e
+                export PATH="/home/fameliza/.bun/bin:$PATH"
+                cd /opt/fameliza || exit 1
+                
+                echo "Pulling latest code..."
+                git fetch origin
+                git reset --hard origin/main
+                
+                echo "Building application..."
+                bun run build
+                
+                echo "Restarting services..."
+                docker-compose -f docker-compose.prod.yml down
+                docker-compose -f docker-compose.prod.yml up -d --build
+                
+                echo "Waiting for services to be healthy..."
+                sleep 10
+                
+                echo "Checking service health..."
+                docker-compose -f docker-compose.prod.yml ps
+                
+                echo "Deployment complete!"
+              FAMELIZA_SCRIPT
+            else
+              # Already running as fameliza (or other user)
+              export PATH="$HOME/.bun/bin:$PATH"
+              cd "$APP_DIR" || exit 1
+              
+              echo "Pulling latest code..."
+              git fetch origin
+              git reset --hard origin/main
+              
+              echo "Building application..."
+              bun run build
+              
+              echo "Restarting services..."
+              docker-compose -f docker-compose.prod.yml down
+              docker-compose -f docker-compose.prod.yml up -d --build
+              
+              echo "Waiting for services to be healthy..."
+              sleep 10
+              
+              echo "Checking service health..."
+              docker-compose -f docker-compose.prod.yml ps
+              
+              echo "Deployment complete!"
+            fi
+          ENDSSH
+
+      - name: Health Check
+        run: |
+          sleep 15
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://ai.fame.support/health || echo "000")
+          if [ "$response" != "200" ]; then
+            echo "Health check failed with status: $response"
+            exit 1
+          fi
+          echo "Health check passed!"
+

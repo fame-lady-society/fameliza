@@ -1,0 +1,13 @@
+# IMPORTANT: This is an example file. Copy to terraform.tfvars and fill in your values.
+# NEVER commit terraform.tfvars to version control - it contains secrets!
+
+linode_token     = "your-linode-api-token-here"  # Get from Linode API Tokens page
+instance_label   = "fameliza"
+region           = "us-east"                      # Choose your Linode region
+instance_type    = "g6-nanode-1"                  # Linode instance type (1GB shared CPU)
+ssh_public_key   = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAB..."  # Your SSH public key
+root_password    = "change-me-on-first-login"     # Strong password (change after first login)
+git_repo         = "https://github.com/your-org/fameliza.git"
+git_branch       = "main"
+domain           = "ai.fame.support"
+

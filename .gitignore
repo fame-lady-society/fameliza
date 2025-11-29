@@ -97,4 +97,12 @@ out/
 .turbo
 
 # ElizaOS
-.elizaos/
+.eliza/
+
+# Terraform secrets and state
+infrastructure/terraform/terraform.tfvars
+infrastructure/terraform/.terraform/
+infrastructure/terraform/.terraform.lock.hcl
+infrastructure/terraform/*.tfstate
+infrastructure/terraform/*.tfstate.backup
+infrastructure/terraform/.terraform.tfstate.lock.info

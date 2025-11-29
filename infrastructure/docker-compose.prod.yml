@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: fameliza-postgres
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-eliza}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data:rw
+    ports:
+      - '127.0.0.1:5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+    networks:
+      - eliza-network
+    # PostgreSQL configuration optimized for ElizaOS
+    # Increase max_connections and shared_buffers for better performance
+    command: postgres -c max_connections=200 -c shared_buffers=256MB
+
+  elizaos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fameliza-elizaos
+    environment:
+      # Core AI providers (at least one required)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+
+      # Database (required for production)
+      # POSTGRES_URL should be in format: postgresql://user:password@host:port/database
+      # When using docker-compose, host is the service name 'postgres'
+      - POSTGRES_URL=${POSTGRES_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-eliza}}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-eliza}
+
+      # Server configuration
+      - SERVER_PORT=${SERVER_PORT:-3000}
+      - ELIZA_UI_ENABLE=${ELIZA_UI_ENABLE:-true}
+      - NODE_ENV=${NODE_ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # Authentication
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
+      - DISCORD_CALLBACK_URL=${DISCORD_CALLBACK_URL:-https://ai.fame.support/auth/discord/callback}
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - API_KEY_SECRET=${API_KEY_SECRET:-}
+      - ALLOWED_DISCORD_USER_IDS=${ALLOWED_DISCORD_USER_IDS:-}
+      - ALLOWED_DISCORD_GUILD_ROLES=${ALLOWED_DISCORD_GUILD_ROLES:-}
+
+      # Optional: Add these based on your plugins
+      # Discord
+      - DISCORD_APPLICATION_ID=${DISCORD_APPLICATION_ID:-}
+      - DISCORD_API_TOKEN=${DISCORD_API_TOKEN:-}
+
+      # Solana
+      - SOLANA_PRIVATE_KEY=${SOLANA_PRIVATE_KEY:-}
+      - SOLANA_PUBLIC_KEY=${SOLANA_PUBLIC_KEY:-}
+      - BIRDEYE_API_KEY=${BIRDEYE_API_KEY:-}
+
+      # EVM
+      - EVM_CHAINS=${EVM_CHAINS:-}
+
+      # Voice/Audio
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID:-}
+
+      # Other AI providers
+      - REDPILL_API_KEY=${REDPILL_API_KEY:-}
+    ports:
+      - '127.0.0.1:3000:3000'
+      - '50000-50100:50000-50100/udp'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Add healthcheck to ensure ElizaOS is ready
+    # Uses curl (available in container) to check if the server is responding
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: always
+    networks:
+      - eliza-network
+    volumes:
+      - ./data:/app/data:rw
+
+networks:
+  eliza-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+
