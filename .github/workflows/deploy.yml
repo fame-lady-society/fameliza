@@ -45,14 +45,14 @@ jobs:
             git reset --hard origin/main
 
             echo "==> Rebuilding and restarting services..."
-            docker compose down || true
-            docker compose up -d --build
+            docker compose -f infrastructure/docker-compose.prod.yml down || true
+            docker compose -f infrastructure/docker-compose.prod.yml up -d --build
 
             echo "==> Waiting for services to start..."
             sleep 10
 
             echo "==> Service status:"
-            docker compose ps
+            docker compose -f infrastructure/docker-compose.prod.yml ps
 
             echo "==> Deployment complete!"
           ENDSSH
