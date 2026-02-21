@@ -191,8 +191,8 @@ Requires=docker.service
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=${APP_DIR}
-ExecStart=/usr/bin/docker-compose -f ${APP_DIR}/docker-compose.prod.yml up -d
-ExecStop=/usr/bin/docker-compose -f ${APP_DIR}/docker-compose.prod.yml down
+ExecStart=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yaml up -d
+ExecStop=/usr/bin/docker compose -f ${APP_DIR}/docker-compose.yaml down
 User=fameliza
 Group=fameliza
 
