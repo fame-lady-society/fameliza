@@ -27,34 +27,34 @@ jobs:
             set -e
 
             APP_DIR="/opt/fameliza"
+            REPO_URL="https://github.com/fame-lady-society/fameliza.git"
 
-            # Ensure directory exists and has correct ownership
-            if [ "$(whoami)" = "root" ]; then
-              mkdir -p "$APP_DIR"
-              chown -R fameliza:fameliza "$APP_DIR"
+            echo "==> Setting up application directory..."
+            mkdir -p "$APP_DIR"
+
+            # Bootstrap: clone repo if not present
+            if [ ! -d "$APP_DIR/.git" ]; then
+              echo "==> First deploy - cloning repository..."
+              git clone -b main "$REPO_URL" "$APP_DIR"
             fi
 
-            # Deploy as fameliza user
-            sudo -u fameliza bash << 'DEPLOY'
-              set -e
-              cd /opt/fameliza || exit 1
+            cd "$APP_DIR"
 
-              echo "==> Pulling latest code..."
-              git fetch origin
-              git reset --hard origin/main
+            echo "==> Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/main
 
-              echo "==> Rebuilding and restarting services..."
-              docker compose down
-              docker compose up -d --build
+            echo "==> Rebuilding and restarting services..."
+            docker compose down || true
+            docker compose up -d --build
 
-              echo "==> Waiting for services to start..."
-              sleep 10
+            echo "==> Waiting for services to start..."
+            sleep 10
 
-              echo "==> Service status:"
-              docker compose ps
+            echo "==> Service status:"
+            docker compose ps
 
-              echo "==> Deployment complete!"
-            DEPLOY
+            echo "==> Deployment complete!"
           ENDSSH
 
       - name: Health Check
